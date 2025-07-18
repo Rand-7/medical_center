@@ -1,0 +1,15 @@
+@keyframes slideIn {
+    from {
+      transform: translateX(-100px);
+      opacity: 0;
+    }
+    to {
+      transform: translateX(0);
+      opacity: 1;
+    }
+  }
+  
+  .avatar-slide-in {
+    animation: slideIn 1s ease-out 3;
+  }
+  
