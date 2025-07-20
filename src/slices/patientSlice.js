@@ -2,25 +2,35 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import axios from '../utils/axios';
 
-// لجلب بيانات المريض
-export const fetchPatient = createAsyncThunk('patient/fetchPatient', async (_, { rejectWithValue }) => {
-  try {
-    const response = await axios.get('/patient_by_id');
-    return response.data.data;
-  } catch (err) {
-    return rejectWithValue('فشل تحميل بيانات المريض');
+// ✅ لجلب بيانات المريض باستخدام GET
+export const fetchPatient = createAsyncThunk(
+  'patient/fetchPatient',
+  async (id, { rejectWithValue }) => {
+    try {
+      const response = await axios.get(`/patient/${id}`);
+      return response.data.data;
+    } catch (err) {
+      console.error('❌ خطأ في جلب بيانات المريض:', err.response?.data || err.message);
+      return rejectWithValue('فشل تحميل بيانات المريض');
+    }
   }
-});
+);
 
-// لتحديث بيانات المريض
-export const updatePatient = createAsyncThunk('patient/updatePatient', async (data, { rejectWithValue }) => {
-  try {
-    const response = await axios.put('/update_patient', { data });
-    return response.data;
-  } catch (err) {
-    return rejectWithValue('فشل تحديث البيانات');
+// ✅ لتحديث بيانات المريض
+export const updatePatient = createAsyncThunk(
+  'patient/updatePatient',
+  async (data, { rejectWithValue }) => {
+    try {
+      const { uuid, ...updateData } = data;
+      const response = await axios.post(`/patient/update/${uuid}`, updateData);
+      return response.data;
+    } catch (err) {
+      console.error('❌ خطأ في تحديث بيانات المريض:', err.response?.data || err.message);
+      return rejectWithValue('فشل تحديث البيانات');
+    }
   }
-});
+);
+
 
 const patientSlice = createSlice({
   name: 'patient',
@@ -51,7 +61,13 @@ const patientSlice = createSlice({
       })
 
       .addCase(updatePatient.fulfilled, (state, action) => {
+        // حسب الـ API، رسالة النجاح تحت error.message رغم status=true
         state.updateStatus = action.payload.error?.message || 'تم التحديث بنجاح';
+
+        // ممكن تحدث بيانات المريض بالبيانات الجديدة (حسب الحاجة)
+        if(action.payload.data) {
+          state.data = action.payload.data;
+        }
       })
       .addCase(updatePatient.rejected, (state, action) => {
         state.updateStatus = action.payload;

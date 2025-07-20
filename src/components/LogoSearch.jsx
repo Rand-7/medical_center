@@ -5,11 +5,18 @@ import {
   Box,
   Button,
   Typography,
-  keyframes
+  keyframes,
+  Snackbar,
+  Alert,
+  IconButton,
+  Tooltip,
 } from "@mui/material";
 import FavoriteIcon from '@mui/icons-material/Favorite';
+import LogoutIcon from '@mui/icons-material/Logout'; // أيقونة تسجيل خروج
 import logo from "../assets/img/Logo.jpg";
 import { useNavigate } from 'react-router-dom';
+import { useSelector, useDispatch } from 'react-redux';
+import { logoutUser, clearLogoutStatus } from '../slices/authSlice';
 
 // أنيميشن نبض القلب
 const pulse = keyframes`
@@ -19,8 +26,14 @@ const pulse = keyframes`
 `;
 
 const LogoSearch = () => {
-  const [healthScore] = useState(85); // نسبة الصحة (تقديرية حالياً)
+  const [healthScore] = useState(85);
   const navigate = useNavigate();
+  const dispatch = useDispatch();
+
+  const user = useSelector((state) => state.auth.user);
+  const { loading, error, logoutStatus } = useSelector(state => state.auth);
+
+  const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
 
   const handleRegister = () => {
     navigate('/register');
@@ -28,6 +41,27 @@ const LogoSearch = () => {
 
   const handleLogin = () => {
     navigate('/login');
+  };
+
+  const handleLogout = () => {
+    dispatch(logoutUser());
+    setSnackbar({ open: true, message: 'جاري تسجيل الخروج...', severity: 'info' });
+  };
+
+  React.useEffect(() => {
+    if (logoutStatus) {
+      setSnackbar({ open: true, message: logoutStatus, severity: 'success' });
+      dispatch(clearLogoutStatus());
+      navigate('/login');
+    }
+    if (error) {
+      setSnackbar({ open: true, message: error, severity: 'error' });
+      dispatch(clearLogoutStatus());
+    }
+  }, [logoutStatus, error, dispatch, navigate]);
+
+  const handleCloseSnackbar = () => {
+    setSnackbar(prev => ({ ...prev, open: false }));
   };
 
   return (
@@ -41,34 +75,54 @@ const LogoSearch = () => {
 
         {/* أزرار + مؤشر الصحة */}
         <Box sx={{ display: "flex", alignItems: "center", gap: 4 }}>
-          <Button
-            onClick={handleRegister}
-            variant="contained"
-            sx={{
-              backgroundColor: '#1E3A5F',
-              color: '#fff',
-              borderRadius: 5,
-              px: 3,
-              py: 1,
-              fontSize: '1rem',
-            }}
-          >
-            Register
-          </Button>
-          <Button
-            onClick={handleLogin}
-            variant="contained"
-            sx={{
-              backgroundColor: '#1E3A5F',
-              color: '#fff',
-              borderRadius: 5,
-              px: 3,
-              py: 1,
-              fontSize: '1rem',
-            }}
-          >
-            Login
-          </Button>
+
+          {!user && (
+            <>
+              <Button
+                onClick={handleRegister}
+                variant="contained"
+                sx={{
+                  backgroundColor: '#1E3A5F',
+                  color: '#fff',
+                  borderRadius: 5,
+                  px: 3,
+                  py: 1,
+                  fontSize: '1rem',
+                }}
+              >
+                Register
+              </Button>
+              <Button
+                onClick={handleLogin}
+                variant="contained"
+                sx={{
+                  backgroundColor: '#1E3A5F',
+                  color: '#fff',
+                  borderRadius: 5,
+                  px: 3,
+                  py: 1,
+                  fontSize: '1rem',
+                }}
+              >
+                Login
+              </Button>
+            </>
+          )}
+
+          {user && (
+            <Tooltip title="تسجيل الخروج">
+              <span>
+                <IconButton
+                  onClick={handleLogout}
+                  color="error"
+                  disabled={loading}
+                  size="large"
+                >
+                  <LogoutIcon />
+                </IconButton>
+              </span>
+            </Tooltip>
+          )}
 
           {/* مؤشر الصحة - قلب ينبض */}
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
@@ -84,7 +138,19 @@ const LogoSearch = () => {
             </Typography>
           </Box>
         </Box>
+
       </Toolbar>
+
+      <Snackbar
+        open={snackbar.open}
+        autoHideDuration={4000}
+        onClose={handleCloseSnackbar}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+      >
+        <Alert severity={snackbar.severity} variant="filled" onClose={handleCloseSnackbar}>
+          {snackbar.message}
+        </Alert>
+      </Snackbar>
     </AppBar>
   );
 };

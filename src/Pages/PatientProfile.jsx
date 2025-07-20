@@ -18,6 +18,7 @@ import { fetchPatient, updatePatient, clearUpdateStatus } from '../slices/patien
 
 const PatientProfile = () => {
   const dispatch = useDispatch();
+  const { user } = useSelector((state) => state.auth);
   const { data: patient, loading, updateStatus, error } = useSelector((state) => state.patient);
 
   const [isEditing, setIsEditing] = useState(false);
@@ -25,8 +26,10 @@ const PatientProfile = () => {
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
 
   useEffect(() => {
-    dispatch(fetchPatient());
-  }, [dispatch]);
+    if (user && user.id) {
+      dispatch(fetchPatient(user.id));
+    }
+  }, [dispatch, user]);
 
   useEffect(() => {
     if (patient) {
