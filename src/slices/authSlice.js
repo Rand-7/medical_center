@@ -1,12 +1,11 @@
 // src/slices/authSlice.js
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import axios from '../utils/axios';
+import { clearPatientData } from './patientSlice'; // ✅ استيراد clearPatientData
 
-// جلب بيانات المستخدم من localStorage عند الإقلاع
 const storedToken = localStorage.getItem('token');
 const storedUser = localStorage.getItem('user');
 
-// تسجيل الدخول
 export const loginUser = createAsyncThunk(
   'auth/loginUser',
   async ({ email, password, user_type }, { rejectWithValue }) => {
@@ -24,18 +23,29 @@ export const loginUser = createAsyncThunk(
   }
 );
 
-// تسجيل الخروج (logout) - استدعاء API ثم حذف البيانات
 export const logoutUser = createAsyncThunk(
   'auth/logoutUser',
-  async (_, { rejectWithValue }) => {
+  async (_, { rejectWithValue, dispatch }) => {
     try {
-      const response = await axios.post('/logout'); // تأكد من المسار الصحيح للـ API
+      const response = await axios.post('/logout', null, {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem('token')}`,
+        },
+      });
+
+      dispatch(clearPatientData());
+
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
+      localStorage.removeItem('medical_info');
+
       return response.data;
     } catch (error) {
       return rejectWithValue(error.response?.data?.error || 'خطأ في تسجيل الخروج');
     }
   }
 );
+
 
 const authSlice = createSlice({
   name: 'auth',
@@ -47,7 +57,6 @@ const authSlice = createSlice({
     logoutStatus: null,
   },
   reducers: {
-    // حذف بيانات المستخدم محلياً بدون API (يمكن تستدعيها لو حبيت)
     clearAuthData: (state) => {
       state.user = null;
       state.token = null;
@@ -58,11 +67,10 @@ const authSlice = createSlice({
     clearLogoutStatus: (state) => {
       state.logoutStatus = null;
       state.error = null;
-    }
+    },
   },
   extraReducers: (builder) => {
     builder
-      // تسجيل الدخول
       .addCase(loginUser.pending, (state) => {
         state.loading = true;
         state.error = null;
@@ -77,7 +85,6 @@ const authSlice = createSlice({
         state.error = action.payload;
       })
 
-      // تسجيل الخروج
       .addCase(logoutUser.pending, (state) => {
         state.loading = true;
         state.error = null;
@@ -88,8 +95,6 @@ const authSlice = createSlice({
         state.user = null;
         state.token = null;
         state.logoutStatus = action.payload.error || 'تم تسجيل الخروج بنجاح';
-        localStorage.removeItem('token');
-        localStorage.removeItem('user');
       })
       .addCase(logoutUser.rejected, (state, action) => {
         state.loading = false;

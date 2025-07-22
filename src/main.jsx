@@ -4,29 +4,33 @@ import App from "./App";
 import { ThemeProvider, createTheme } from "@mui/material/styles";
 import CssBaseline from "@mui/material/CssBaseline";
 
-// ✅ استيراد Redux Provider و store
+// ✅ Redux
 import { Provider } from "react-redux";
 import store from "./store/store";
 
-// إنشاء ثيم مخصص (اختياري)
+// ✅ Router
+import { BrowserRouter } from "react-router-dom"; // أضيفي هاد السطر
+
 const theme = createTheme({
   palette: {
     primary: {
-      main: "#1976d2", // اللون الأساسي
+      main: "#1976d2",
     },
     secondary: {
-      main: "#f50057", // اللون الثانوي
+      main: "#f50057",
     },
   },
 });
 
 ReactDOM.createRoot(document.getElementById("root")).render(
   <React.StrictMode>
-    <Provider store={store}> {/* ✅ لف التطبيق داخل Provider */}
-      <ThemeProvider theme={theme}>
-        <CssBaseline />
-        <App />
-      </ThemeProvider>
+    <Provider store={store}>
+      <BrowserRouter> {/* ✅ لفّي التطبيق كله بهون */}
+        <ThemeProvider theme={theme}>
+          <CssBaseline />
+          <App />
+        </ThemeProvider>
+      </BrowserRouter>
     </Provider>
   </React.StrictMode>
 );

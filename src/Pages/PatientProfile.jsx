@@ -1,264 +1,293 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState } from "react";
 import {
-  Box,
-  Card,
-  CardContent,
-  Typography,
-  TextField,
-  Button,
-  Grid,
-  MenuItem,
-  Divider,
-  CircularProgress,
-  Snackbar,
-  Alert,
-} from '@mui/material';
-import { useDispatch, useSelector } from 'react-redux';
-import { fetchPatient, updatePatient, clearUpdateStatus } from '../slices/patientSlice';
+  Box, Grid, Paper, Typography, Divider, List, ListItem, ListItemText,
+  Button, Link, Chip, Drawer, ListItemIcon, ListItemButton, Toolbar, TextField, Dialog,
+  DialogActions, DialogContent, DialogTitle
+} from "@mui/material";
+import HomeIcon from "@mui/icons-material/Home";
+import MedicalServicesIcon from "@mui/icons-material/MedicalServices";
+import LogoutIcon from "@mui/icons-material/Logout";
+import { useDispatch, useSelector } from "react-redux";
+import { fetchPatient, updatePatient, clearUpdateStatus, clearPatientData } from "../slices/patientSlice";
+import { logoutUser } from "../slices/authSlice";
+import { useNavigate } from "react-router-dom";
+
+const drawerWidth = 240;
 
 const PatientProfile = () => {
   const dispatch = useDispatch();
-  const { user } = useSelector((state) => state.auth);
-  const { data: patient, loading, updateStatus, error } = useSelector((state) => state.patient);
+  const navigate = useNavigate();
+  const patientId = 1;
 
-  const [isEditing, setIsEditing] = useState(false);
-  const [formData, setFormData] = useState(null);
-  const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
+  const { data: patient, loading, error, updateStatus } = useSelector((state) => state.patient);
+  const [editOpen, setEditOpen] = useState(false);
+  const [formData, setFormData] = useState({});
+  const [isLocked, setIsLocked] = useState(true);
+  const [isFirstTime, setIsFirstTime] = useState(true);
 
-  useEffect(() => {
-    if (user && user.id) {
-      dispatch(fetchPatient(user.id));
-    }
-  }, [dispatch, user]);
+const { token } = useSelector((state) => state.auth); // 👈 جبنا التوكن من الauth
+
+useEffect(() => {
+  if (token) {
+    dispatch(fetchPatient(patientId));
+  }
+}, [dispatch, patientId, token]); 
 
   useEffect(() => {
     if (patient) {
-      setFormData(patient);
+      const localData = JSON.parse(localStorage.getItem("medical_info"));
+      const mergedData = localData ? { ...patient, ...localData } : patient;
+      setFormData(mergedData);
+      setIsLocked(localData ? true : false);
+      setIsFirstTime(!localData);
     }
   }, [patient]);
 
+  // ** التعديل الأساسي هنا: إعادة تعيين formData وحالة القفل عند مسح بيانات المريض **
   useEffect(() => {
-    if (updateStatus) {
-      setSnackbar({ open: true, message: updateStatus, severity: 'success' });
-      dispatch(clearUpdateStatus());
-      setIsEditing(false);
-    } else if (error) {
-      setSnackbar({ open: true, message: error, severity: 'error' });
+    if (!patient) {
+      setFormData({});
+      setIsLocked(true);
+      setIsFirstTime(true);
     }
-  }, [updateStatus, error, dispatch]);
+  }, [patient]);
+
+  const handleLogout = async () => {
+    try {
+      await dispatch(logoutUser()).unwrap();
+      dispatch(clearPatientData());           // مسح بيانات المريض من الstore
+      localStorage.removeItem("medical_info"); // مسح الحساسية والأمراض من localStorage
+      setFormData({});  // تنظيف الفورم داتا صراحة
+setIsLocked(true);
+setIsFirstTime(true);
+      navigate("/");
+    } catch (err) {
+      console.error("خطأ بتسجيل الخروج:", err);
+    }
+  };
+
+  const handleEditOpen = () => setEditOpen(true);
+  const handleEditClose = () => {
+    setEditOpen(false);
+    dispatch(clearUpdateStatus());
+  };
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
+    setFormData(prev => ({ ...prev, [name]: value }));
   };
 
-  const handleEditToggle = () => setIsEditing(!isEditing);
+  const handleLocalSave = () => {
+    const localFields = {
+      allergies: formData.allergies,
+      chronicDiseases: formData.chronicDiseases,
+      bloodType: formData.bloodType,
+      pastIllnesses: formData.pastIllnesses
+    };
+    localStorage.setItem("medical_info", JSON.stringify(localFields));
+    setIsLocked(true);
+    setIsFirstTime(false);
+  };
 
-  const handleSave = () => {
-    if (formData) {
-      dispatch(updatePatient(formData));
+  const handleUpdate = async () => {
+    try {
+      await dispatch(updatePatient({ id: patientId, ...formData })).unwrap();
+      setIsLocked(true);
+      setEditOpen(false);
+    } catch (error) {
+      console.error("فشل تحديث البيانات:", error);
     }
   };
 
-  const fieldStyle = {
-    '& .MuiInputBase-root': {
-      borderRadius: '12px',
-      backgroundColor: isEditing ? '#f5faff' : '#f9f9f9',
-    },
-    '& .MuiInputLabel-root': {
-      color: '#1976d2',
-      fontWeight: 'bold',
-    },
-    '& .MuiOutlinedInput-notchedOutline': {
-      borderColor: '#bbdefb',
-    },
-    '&:hover .MuiOutlinedInput-notchedOutline': {
-      borderColor: '#64b5f6',
-    },
-    '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-      borderColor: '#1976d2',
-      borderWidth: '2px',
-    },
-  };
+  const futureVisits = [
+    { date: "2025-06-26", time: "11:00", service: "تنظيف أسنان", doctor: "د. علا أحمد", status: "مجدول" },
+    { date: "2025-07-01", time: "12:30", service: "فحص نظر", doctor: "د. سامي خليل", status: "مجدول" },
+  ];
 
-  if (loading || !formData) {
-    return (
-      <Box sx={{ display: 'flex', justifyContent: 'center', mt: 10 }}>
-        <CircularProgress />
-      </Box>
-    );
-  }
+  const files = [
+    { name: "نتيجة الفحص.pdf", size: "123kb" },
+    { name: "وصفة طبية.pdf", size: "87kb" },
+  ];
+
+  const notes = [
+    { name: "Note 31.06.23.pdf", size: "123kb" },
+    { name: "Note 23.06.23.pdf", size: "123kb" },
+  ];
+
+  if (loading) return <Typography>جاري التحميل...</Typography>;
+  if (error) return <Typography color="error">{error}</Typography>;
+  if (!patient) return <Typography>لا توجد بيانات المريض</Typography>;
 
   return (
-    <Box sx={{ display: 'flex', justifyContent: 'center', mt: 5, px: 2 }}>
-      <Card
+    <Box sx={{ display: "flex", minHeight: "100vh", backgroundColor: "#f4f6fb" }}>
+      <Drawer
+        variant="permanent"
         sx={{
-          maxWidth: 600,
-          width: '100%',
-          p: 3,
-          borderRadius: '20px',
-          boxShadow: 6,
-          background: 'rgba(255, 255, 255, 0.75)',
-          backdropFilter: 'blur(8px)',
+          width: drawerWidth,
+          flexShrink: 0,
+          [`& .MuiDrawer-paper`]: {
+            width: drawerWidth,
+            boxSizing: "border-box",
+            backgroundColor: "#1976d2",
+            color: "white",
+            borderRadius: "0 40px 40px 0",
+          },
         }}
       >
-        <CardContent>
-          <Typography
-            variant="h5"
-            sx={{ mb: 3, color: '#1976d2', fontWeight: 'bold', textAlign: 'center' }}
-          >
-            معلوماتي الشخصية
+        <Toolbar>
+          <Typography variant="h6" noWrap component="div" fontFamily="monospace">
+            M E D I C A L
           </Typography>
+        </Toolbar>
+        <Divider />
+        <List>
+          <ListItem disablePadding>
+            <ListItemButton onClick={() => navigate("/")}>
+              <ListItemIcon sx={{ color: "white" }}><HomeIcon /></ListItemIcon>
+              <ListItemText primary="الصفحة الرئيسية" />
+            </ListItemButton>
+          </ListItem>
+          <ListItem disablePadding>
+            <ListItemButton>
+              <ListItemIcon sx={{ color: "white" }}><MedicalServicesIcon /></ListItemIcon>
+              <ListItemText primary="خدماتنا" />
+            </ListItemButton>
+          </ListItem>
+          <ListItem disablePadding>
+            <ListItemButton onClick={handleLogout}>
+              <ListItemIcon sx={{ color: "white" }}><LogoutIcon /></ListItemIcon>
+              <ListItemText primary="تسجيل الخروج" />
+            </ListItemButton>
+          </ListItem>
+        </List>
+      </Drawer>
 
-          <Grid container spacing={2}>
-            <Grid item xs={12}>
-              <TextField
-                fullWidth
-                label="الاسم الكامل"
-                name="name"
-                value={formData.name}
-                onChange={handleChange}
-                disabled={!isEditing}
-                sx={fieldStyle}
-              />
-            </Grid>
+      <Box component="main" sx={{ flexGrow: 1, p: 4 }}>
+        <Box sx={{ p: 3, borderRadius: "16px", boxShadow: 2, mb: 3, backgroundColor: "#f5f7fb", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          <Typography fontSize="25px" color="#1976d2" margin="15px">How are you Feeling today ?</Typography>
+          <Box display="flex" alignItems="stretch">
+            <Box>
+              <Typography variant="body1" color="text.secondary">Good Morning !</Typography>
+              <Typography variant="h6" fontWeight="bold">{patient.name}</Typography>
+            </Box>
+          </Box>
+        </Box>
 
-            <Grid item xs={12}>
-              <TextField
-                fullWidth
-                label="البريد الإلكتروني"
-                name="email"
-                value={formData.email}
-                onChange={handleChange}
-                disabled={!isEditing}
-                sx={fieldStyle}
-              />
-            </Grid>
-
-            <Grid item xs={12}>
-              <TextField
-                fullWidth
-                label="رقم الهاتف"
-                name="phone"
-                value={formData.phone}
-                onChange={handleChange}
-                disabled={!isEditing}
-                sx={fieldStyle}
-              />
-            </Grid>
-
-            <Grid item xs={12}>
-              <Divider sx={{ my: 1.5, borderColor: '#e0e0e0' }} />
-            </Grid>
-
-            <Grid item xs={6}>
-              <TextField
-                fullWidth
-                label="تاريخ الميلاد"
-                name="birth_date"
-                type="date"
-                InputLabelProps={{ shrink: true }}
-                value={formData.birth_date}
-                onChange={handleChange}
-                disabled={!isEditing}
-                sx={fieldStyle}
-              />
-            </Grid>
-
-            <Grid item xs={6}>
-              <TextField
-                fullWidth
-                select
-                label="الجنس"
-                name="gender"
-                value={formData.gender}
-                onChange={handleChange}
-                disabled={!isEditing}
-                sx={fieldStyle}
-              >
-                <MenuItem value="ذكر">ذكر</MenuItem>
-                <MenuItem value="انثى">أنثى</MenuItem>
-              </TextField>
-            </Grid>
-
-            <Grid item xs={12}>
-              <TextField
-                fullWidth
-                label="العنوان"
-                name="address"
-                value={formData.address}
-                onChange={handleChange}
-                disabled={!isEditing}
-                sx={fieldStyle}
-              />
-            </Grid>
-
-            <Grid item xs={12}>
-              <TextField
-                fullWidth
-                label="النوع"
-                value="مريض"
-                disabled
-                sx={fieldStyle}
-              />
-            </Grid>
+        <Grid container spacing={3}>
+          <Grid item xs={12} md={3}>
+            <Paper sx={{ p: 2, textAlign: "center", borderRadius: "16px 40px" }}>
+              <Typography variant="h6" mt={2}>{patient.name}</Typography>
+              <Typography variant="body2" color="text.secondary">{patient.phone}</Typography>
+              <Typography variant="body2" color="text.secondary">{patient.email}</Typography>
+            </Paper>
           </Grid>
 
-          <Box sx={{ mt: 4, textAlign: 'center' }}>
-            {isEditing ? (
-              <Button
-                variant="contained"
-                onClick={handleSave}
-                sx={{
-                  background: 'linear-gradient(135deg, #4FC3F7, #1976D2)',
-                  color: '#fff',
-                  px: 4,
-                  py: 1.5,
-                  borderRadius: '25px',
-                  boxShadow: '0 4px 12px rgba(33, 150, 243, 0.3)',
-                  transition: 'all 0.3s ease',
-                  '&:hover': {
-                    background: 'linear-gradient(135deg, #29B6F6, #1565C0)',
-                    boxShadow: '0 6px 16px rgba(33, 150, 243, 0.4)',
-                  },
-                }}
-              >
-                حفظ
-              </Button>
-            ) : (
-              <Button
-                variant="outlined"
-                onClick={handleEditToggle}
-                sx={{
-                  color: '#1976d2',
-                  borderColor: '#64b5f6',
-                  px: 4,
-                  py: 1.5,
-                  borderRadius: '25px',
-                  transition: 'all 0.3s ease',
-                  '&:hover': {
-                    backgroundColor: '#e3f2fd',
-                    borderColor: '#1976d2',
-                  },
-                }}
-              >
-                تعديل
-              </Button>
-            )}
-          </Box>
-        </CardContent>
-      </Card>
+          <Grid item xs={12} md={6}>
+            <Paper sx={{ p: 2, mb: 2, borderRadius: "16px 40px" }}>
+              <Box display="flex" justifyContent="space-between" alignItems="center" mb={1}>
+                <Typography variant="h6">المعلومات العامة</Typography>
+                <Button variant="outlined" onClick={handleEditOpen}>تعديل البيانات</Button>
+              </Box>
+              <Grid container spacing={2}>
+                <Grid item xs={6}><strong>تاريخ الميلاد:</strong> {patient.birth_date}</Grid>
+                <Grid item xs={6}><strong>العنوان:</strong> {patient.address}</Grid>
+                <Grid item xs={6}><strong>تاريخ التسجيل:</strong> {patient.registrationDate || "-"}</Grid>
+              </Grid>
+            </Paper>
 
-      <Snackbar
-        open={snackbar.open}
-        autoHideDuration={4000}
-        onClose={() => setSnackbar((prev) => ({ ...prev, open: false }))}
-        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
-      >
-        <Alert severity={snackbar.severity} variant="filled">
-          {snackbar.message}
-        </Alert>
-      </Snackbar>
+            <Paper sx={{ p: 2, mb: 2, borderRadius: "16px 40px" }}>
+              <Box display="flex" justifyContent="space-between" alignItems="center" mb={1}>
+                <Typography variant="h6">الأمراض والحساسية</Typography>
+                {isLocked ? (
+                  <Button variant="outlined" onClick={() => setIsLocked(false)}>
+                    {isFirstTime ? "ادخل الحساسية" : "تعديل الحساسية"}
+                  </Button>
+                ) : null}
+              </Box>
+              <Grid container spacing={2}>
+                {["allergies", "chronicDiseases", "bloodType", "pastIllnesses"].map(field => (
+                  <Grid item xs={6} key={field}>
+                    <strong>{{
+                      allergies: "الحساسية",
+                      chronicDiseases: "أمراض مزمنة",
+                      bloodType: "فصيلة الدم",
+                      pastIllnesses: "أمراض سابقة"
+                    }[field]}</strong>{" "}
+                    {isLocked ? (
+                      <Typography>{formData[field] || "-"}</Typography>
+                    ) : (
+                      <TextField
+                        name={field}
+                        value={formData[field] || ""}
+                        onChange={handleChange}
+                        fullWidth
+                        size="small"
+                      />
+                    )}
+                  </Grid>
+                ))}
+
+                {!isLocked && (
+                  <Grid item xs={12} textAlign="right" sx={{ mt: 2 }}>
+                    <Button variant="contained" onClick={handleLocalSave}>حفظ</Button>
+                  </Grid>
+                )}
+              </Grid>
+            </Paper>
+
+            <Paper sx={{ p: 2, borderRadius: "16px 40px" }}>
+              <Typography variant="h6">الزيارات القادمة</Typography>
+              <List>
+                {futureVisits.map((visit, idx) => (
+                  <ListItem key={idx} divider>
+                    <ListItemText primary={`${visit.date} ${visit.time} - ${visit.service}`} secondary={`الطبيب: ${visit.doctor}`} />
+                    <Chip label={visit.status} color="primary" />
+                  </ListItem>
+                ))}
+              </List>
+            </Paper>
+          </Grid>
+
+          <Grid item xs={12} md={3}>
+            <Paper sx={{ p: 2, mb: 2, borderRadius: "16px 40px" }}>
+              <Typography variant="h6">الملفات</Typography>
+              {files.map((file, idx) => (
+                <Box key={idx} display="flex" justifyContent="space-between" my={1}>
+                  <Link href="#">{file.name}</Link>
+                  <Typography variant="caption">{file.size}</Typography>
+                </Box>
+              ))}
+              <Button size="small" variant="contained" sx={{ mt: 1 }}>تحميل</Button>
+            </Paper>
+
+            <Paper sx={{ p: 2, borderRadius: "16px 40px" }}>
+              <Typography variant="h6">ملاحظات</Typography>
+              {notes.map((note, idx) => (
+                <Box key={idx} display="flex" justifyContent="space-between" my={1}>
+                  <Typography>{note.name}</Typography>
+                  <Typography variant="caption">{note.size}</Typography>
+                </Box>
+              ))}
+              <Button size="small" variant="outlined" sx={{ mt: 1 }}>تحميل</Button>
+            </Paper>
+          </Grid>
+        </Grid>
+      </Box>
+
+      <Dialog open={editOpen} onClose={handleEditClose}>
+        <DialogTitle>تعديل بيانات المريض</DialogTitle>
+        <DialogContent sx={{ pt: 1 }}>
+          <TextField margin="dense" label="الاسم" fullWidth name="name" value={formData.name || ""} onChange={handleChange} />
+          <TextField margin="dense" label="الهاتف" fullWidth name="phone" value={formData.phone || ""} onChange={handleChange} />
+          <TextField margin="dense" label="البريد الإلكتروني" fullWidth name="email" value={formData.email || ""} onChange={handleChange} />
+          <TextField margin="dense" label="العنوان" fullWidth name="address" value={formData.address || ""} onChange={handleChange} />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleEditClose}>إلغاء</Button>
+          <Button onClick={handleUpdate} variant="contained">حفظ</Button>
+        </DialogActions>
+        {updateStatus && <Typography textAlign="center" color="success.main" mt={1}>{updateStatus}</Typography>}
+      </Dialog>
     </Box>
   );
 };

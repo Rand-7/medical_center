@@ -14,7 +14,9 @@ instance.interceptors.request.use(
     const token = localStorage.getItem('token'); // أو من Redux
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
-    }
+    } else {
+    delete config.headers.Authorization; // 💥 لا ترسلي هيدر وهمي
+  }
     return config;
   },
   (error) => Promise.reject(error)

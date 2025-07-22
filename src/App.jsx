@@ -1,5 +1,5 @@
 // src/App.jsx
-import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+import { Routes, Route } from "react-router-dom"; // فقط هدول
 import { useState } from "react";
 import HomePage from "./Pages/HomePage";
 import RegisterForm from "./Pages/RegisterForm";
@@ -18,7 +18,7 @@ function App() {
   };
 
   return (
-    <Router>
+    <>
       {loading ? (
         <LoadingPage onFinish={handleFinishLoading} />
       ) : (
@@ -30,11 +30,10 @@ function App() {
           <Route path="/specialty/:specialtyId" element={<SpecialtyDoctorsPage />} />
           <Route path="/booking" element={<BookingPage />} />
           <Route path="/doctor-dashboard" element={<DoctorDashboard />} />
-          <Route path="/patient" element={<PatientProfile/>}/>
-
+          <Route path="/patient" element={<PatientProfile />} />
         </Routes>
       )}
-    </Router>
+    </>
   );
 }
 

@@ -2,12 +2,17 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import axios from '../utils/axios';
 
-// ✅ لجلب بيانات المريض باستخدام GET
+// ✅ جلب بيانات المريض باستخدام GET بعد تعديل الـ API
 export const fetchPatient = createAsyncThunk(
-  'patient/fetchPatient',
+  "patient/fetchPatient",
   async (id, { rejectWithValue }) => {
+    const token = localStorage.getItem("token");
+    if (!token) return rejectWithValue("غير مصرح");
+
     try {
-      const response = await axios.get(`/patient/${id}`);
+      const response = await axios.get(`/patient/${id}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
       return response.data.data;
     } catch (err) {
       console.error('❌ خطأ في جلب بيانات المريض:', err.response?.data || err.message);
@@ -21,8 +26,8 @@ export const updatePatient = createAsyncThunk(
   'patient/updatePatient',
   async (data, { rejectWithValue }) => {
     try {
-      const { uuid, ...updateData } = data;
-      const response = await axios.post(`/patient/update/${uuid}`, updateData);
+      const { id, ...updateData } = data;
+      const response = await axios.post(`/patient/update/${id}`, updateData);
       return response.data;
     } catch (err) {
       console.error('❌ خطأ في تحديث بيانات المريض:', err.response?.data || err.message);
@@ -30,7 +35,6 @@ export const updatePatient = createAsyncThunk(
     }
   }
 );
-
 
 const patientSlice = createSlice({
   name: 'patient',
@@ -42,6 +46,14 @@ const patientSlice = createSlice({
   },
   reducers: {
     clearUpdateStatus: (state) => {
+      state.updateStatus = null;
+    },
+
+    // ⭐ أضفنا هذا:
+    clearPatientData: (state) => {
+      state.data = null;
+      state.loading = false;
+      state.error = null;
       state.updateStatus = null;
     },
   },
@@ -61,11 +73,8 @@ const patientSlice = createSlice({
       })
 
       .addCase(updatePatient.fulfilled, (state, action) => {
-        // حسب الـ API، رسالة النجاح تحت error.message رغم status=true
         state.updateStatus = action.payload.error?.message || 'تم التحديث بنجاح';
-
-        // ممكن تحدث بيانات المريض بالبيانات الجديدة (حسب الحاجة)
-        if(action.payload.data) {
+        if (action.payload.data) {
           state.data = action.payload.data;
         }
       })
@@ -75,5 +84,6 @@ const patientSlice = createSlice({
   },
 });
 
-export const { clearUpdateStatus } = patientSlice.actions;
+// ⭐ صدريها:
+export const { clearUpdateStatus, clearPatientData } = patientSlice.actions;
 export default patientSlice.reducer;

@@ -5,18 +5,14 @@ import {
   Box,
   Button,
   Typography,
-  keyframes,
-  Snackbar,
-  Alert,
-  IconButton,
-  Tooltip,
+  keyframes
 } from "@mui/material";
 import FavoriteIcon from '@mui/icons-material/Favorite';
-import LogoutIcon from '@mui/icons-material/Logout'; // أيقونة تسجيل خروج
 import logo from "../assets/img/Logo.jpg";
 import { useNavigate } from 'react-router-dom';
 import { useSelector, useDispatch } from 'react-redux';
-import { logoutUser, clearLogoutStatus } from '../slices/authSlice';
+import { logoutUser } from '../slices/authSlice'; // تأكد من مسار الاستيراد
+import { clearPatientData } from '../slices/patientSlice'; // تأكد من مسار الاستيراد
 
 // أنيميشن نبض القلب
 const pulse = keyframes`
@@ -29,11 +25,7 @@ const LogoSearch = () => {
   const [healthScore] = useState(85);
   const navigate = useNavigate();
   const dispatch = useDispatch();
-
   const user = useSelector((state) => state.auth.user);
-  const { loading, error, logoutStatus } = useSelector(state => state.auth);
-
-  const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
 
   const handleRegister = () => {
     navigate('/register');
@@ -43,25 +35,16 @@ const LogoSearch = () => {
     navigate('/login');
   };
 
-  const handleLogout = () => {
-    dispatch(logoutUser());
-    setSnackbar({ open: true, message: 'جاري تسجيل الخروج...', severity: 'info' });
-  };
-
-  React.useEffect(() => {
-    if (logoutStatus) {
-      setSnackbar({ open: true, message: logoutStatus, severity: 'success' });
-      dispatch(clearLogoutStatus());
-      navigate('/login');
+  const handleLogout = async () => {
+    try {
+      // تنظيف البيانات المخزنة محليًا
+      localStorage.removeItem("medical_info");
+      await dispatch(logoutUser()).unwrap();
+      dispatch(clearPatientData()); // مسح بيانات المريض من Redux store
+      navigate("/");
+    } catch (err) {
+      console.error("خطأ بتسجيل الخروج:", err);
     }
-    if (error) {
-      setSnackbar({ open: true, message: error, severity: 'error' });
-      dispatch(clearLogoutStatus());
-    }
-  }, [logoutStatus, error, dispatch, navigate]);
-
-  const handleCloseSnackbar = () => {
-    setSnackbar(prev => ({ ...prev, open: false }));
   };
 
   return (
@@ -75,8 +58,7 @@ const LogoSearch = () => {
 
         {/* أزرار + مؤشر الصحة */}
         <Box sx={{ display: "flex", alignItems: "center", gap: 4 }}>
-
-          {!user && (
+          {!user ? (
             <>
               <Button
                 onClick={handleRegister}
@@ -107,21 +89,21 @@ const LogoSearch = () => {
                 Login
               </Button>
             </>
-          )}
-
-          {user && (
-            <Tooltip title="تسجيل الخروج">
-              <span>
-                <IconButton
-                  onClick={handleLogout}
-                  color="error"
-                  disabled={loading}
-                  size="large"
-                >
-                  <LogoutIcon />
-                </IconButton>
-              </span>
-            </Tooltip>
+          ) : (
+            <Button
+              onClick={handleLogout}
+              variant="outlined"
+              sx={{
+                borderColor: '#1E3A5F',
+                color: '#1E3A5F',
+                borderRadius: 5,
+                px: 3,
+                py: 1,
+                fontSize: '1rem',
+              }}
+            >
+              Logout
+            </Button>
           )}
 
           {/* مؤشر الصحة - قلب ينبض */}
@@ -138,19 +120,7 @@ const LogoSearch = () => {
             </Typography>
           </Box>
         </Box>
-
       </Toolbar>
-
-      <Snackbar
-        open={snackbar.open}
-        autoHideDuration={4000}
-        onClose={handleCloseSnackbar}
-        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
-      >
-        <Alert severity={snackbar.severity} variant="filled" onClose={handleCloseSnackbar}>
-          {snackbar.message}
-        </Alert>
-      </Snackbar>
     </AppBar>
   );
 };
