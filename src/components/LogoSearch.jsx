@@ -5,16 +5,19 @@ import {
   Box,
   Button,
   Typography,
-  keyframes
+  keyframes,
+  IconButton,
+  Tooltip,
 } from "@mui/material";
 import FavoriteIcon from '@mui/icons-material/Favorite';
+import LogoutIcon from '@mui/icons-material/Logout';
+import AccountCircleIcon from '@mui/icons-material/AccountCircle';
 import logo from "../assets/img/Logo.jpg";
 import { useNavigate } from 'react-router-dom';
 import { useSelector, useDispatch } from 'react-redux';
 import { logoutUser } from '../slices/authSlice'; // تأكد من مسار الاستيراد
 import { clearPatientData } from '../slices/patientSlice'; // تأكد من مسار الاستيراد
 
-// أنيميشن نبض القلب
 const pulse = keyframes`
   0% { transform: scale(1); }
   50% { transform: scale(1.3); }
@@ -37,14 +40,17 @@ const LogoSearch = () => {
 
   const handleLogout = async () => {
     try {
-      // تنظيف البيانات المخزنة محليًا
       localStorage.removeItem("medical_info");
       await dispatch(logoutUser()).unwrap();
-      dispatch(clearPatientData()); // مسح بيانات المريض من Redux store
+      dispatch(clearPatientData());
       navigate("/");
     } catch (err) {
       console.error("خطأ بتسجيل الخروج:", err);
     }
+  };
+
+  const handleProfile = () => {
+    navigate('/patient'); // أو المسار الخاص بصفحة بروفايل المريض عندك
   };
 
   return (
@@ -57,7 +63,7 @@ const LogoSearch = () => {
         </Box>
 
         {/* أزرار + مؤشر الصحة */}
-        <Box sx={{ display: "flex", alignItems: "center", gap: 4 }}>
+        <Box sx={{ display: "flex", alignItems: "center", gap: 3 }}>
           {!user ? (
             <>
               <Button
@@ -90,20 +96,18 @@ const LogoSearch = () => {
               </Button>
             </>
           ) : (
-            <Button
-              onClick={handleLogout}
-              variant="outlined"
-              sx={{
-                borderColor: '#1E3A5F',
-                color: '#1E3A5F',
-                borderRadius: 5,
-                px: 3,
-                py: 1,
-                fontSize: '1rem',
-              }}
-            >
-              Logout
-            </Button>
+            <>
+              <Tooltip title="الملف الشخصي">
+                <IconButton onClick={handleProfile} color="primary" size="large">
+                  <AccountCircleIcon fontSize="large" />
+                </IconButton>
+              </Tooltip>
+              <Tooltip title="تسجيل الخروج">
+                <IconButton onClick={handleLogout} color="primary" size="large">
+                  <LogoutIcon fontSize="large" />
+                </IconButton>
+              </Tooltip>
+            </>
           )}
 
           {/* مؤشر الصحة - قلب ينبض */}

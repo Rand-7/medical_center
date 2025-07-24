@@ -1,7 +1,6 @@
-// src/slices/authSlice.js
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import axios from '../utils/axios';
-import { clearPatientData } from './patientSlice'; // ✅ استيراد clearPatientData
+import { clearPatientData } from './patientSlice';
 
 const storedToken = localStorage.getItem('token');
 const storedUser = localStorage.getItem('user');
@@ -33,19 +32,24 @@ export const logoutUser = createAsyncThunk(
         },
       });
 
+      // بعد تسجيل الخروج، نظف بيانات المريض
       dispatch(clearPatientData());
 
+      // مسح بيانات التوكن والمستخدم من localStorage
       localStorage.removeItem('token');
       localStorage.removeItem('user');
       localStorage.removeItem('medical_info');
 
-      return response.data;
+      // في response.data.error جاي رسالة نجاح، فخليها تظهر بشكل مناسب
+      const successMessage = response.data.error || 'تم تسجيل الخروج بنجاح';
+
+      return successMessage;
     } catch (error) {
+          console.log('Logout error details:', error); 
       return rejectWithValue(error.response?.data?.error || 'خطأ في تسجيل الخروج');
     }
   }
 );
-
 
 const authSlice = createSlice({
   name: 'auth',
@@ -94,7 +98,8 @@ const authSlice = createSlice({
         state.loading = false;
         state.user = null;
         state.token = null;
-        state.logoutStatus = action.payload.error || 'تم تسجيل الخروج بنجاح';
+        // حفظ رسالة تسجيل الخروج بنجاح في logoutStatus
+        state.logoutStatus = action.payload;
       })
       .addCase(logoutUser.rejected, (state, action) => {
         state.loading = false;
