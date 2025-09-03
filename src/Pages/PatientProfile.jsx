@@ -293,6 +293,7 @@
 
 // export default PatientProfile;
 
+// src/Pages/PatientProfile.jsx
 import React, { useEffect, useState } from "react";
 import {
   Box,
@@ -318,6 +319,8 @@ import {
   IconButton,
   CircularProgress,
   Alert,
+  Card,
+  CardContent,
 } from "@mui/material";
 
 import HomeIcon from "@mui/icons-material/Home";
@@ -327,6 +330,8 @@ import EditIcon from "@mui/icons-material/Edit";
 
 import { useDispatch, useSelector } from "react-redux";
 import { fetchPatientById, updatePatient } from "../slices/patientSlice";
+import { fetchAppointments } from "../slices/appointmentsSlice";
+import { fetchPatientReports } from "../slices/reportsSlice";
 
 import { useNavigate } from "react-router-dom";
 import { logoutUser } from "../slices/authSlice";
@@ -338,6 +343,18 @@ const PatientProfile = () => {
   const navigate = useNavigate();
 
   const { patient, loading, error } = useSelector((state) => state.patient);
+  const {
+    items: appointments = [],
+    loading: loadingAppointments,
+    error: errorAppointments,
+  } = useSelector((state) => state.appointments);
+
+  const {
+    reports = [],
+    loading: loadingReports,
+    error: errorReports,
+  } = useSelector((state) => state.reportsSlice);
+
   const authUser = useSelector((state) => state.auth.user);
   const patientId = authUser?.id;
 
@@ -350,26 +367,28 @@ const PatientProfile = () => {
     address: "",
   });
   const [localError, setLocalError] = useState(null);
+
   const [medicalInfo, setMedicalInfo] = useState({
-  allergies: '',
-  chronicDiseases: '',
-  bloodType: '',
-  pastIllnesses: '',
-});
-const [isLocked, setIsLocked] = useState(true);
+    allergies: "",
+    chronicDiseases: "",
+    bloodType: "",
+    pastIllnesses: "",
+  });
+  const [isLocked, setIsLocked] = useState(true);
 
-// جلب بيانات من localStorage عند بداية الصفحة
-useEffect(() => {
-  const storedMedicalInfo = localStorage.getItem('medical_info');
-  if (storedMedicalInfo) {
-    setMedicalInfo(JSON.parse(storedMedicalInfo));
-  }
-}, []);
-
+  // جلب بيانات من localStorage عند بداية الصفحة
+  useEffect(() => {
+    const storedMedicalInfo = localStorage.getItem("medical_info");
+    if (storedMedicalInfo) {
+      setMedicalInfo(JSON.parse(storedMedicalInfo));
+    }
+  }, []);
 
   useEffect(() => {
     if (patientId) {
       dispatch(fetchPatientById(patientId));
+      dispatch(fetchAppointments(patientId)); // ✅ جلب مواعيد المريض
+      dispatch(fetchPatientReports(patientId)); // ✅ جلب تقارير المريض
     }
   }, [dispatch, patientId]);
 
@@ -397,24 +416,27 @@ useEffect(() => {
   const handleSave = async () => {
     setLocalError(null);
     try {
-      await dispatch(updatePatient({ id: patientId, patientData: editedData })).unwrap();
+      await dispatch(
+        updatePatient({ id: patientId, patientData: editedData })
+      ).unwrap();
       setOpenDialog(false);
     } catch (err) {
       setLocalError(err || "حدث خطأ أثناء التحديث");
     }
   };
-const handleMedicalChange = (e) => {
-  const { name, value } = e.target;
-  setMedicalInfo((prev) => ({
-    ...prev,
-    [name]: value,
-  }));
-};
 
-const handleSaveMedicalInfo = () => {
-  localStorage.setItem('medical_info', JSON.stringify(medicalInfo));
-  setIsLocked(true);
-};
+  const handleMedicalChange = (e) => {
+    const { name, value } = e.target;
+    setMedicalInfo((prev) => ({
+      ...prev,
+      [name]: value,
+    }));
+  };
+
+  const handleSaveMedicalInfo = () => {
+    localStorage.setItem("medical_info", JSON.stringify(medicalInfo));
+    setIsLocked(true);
+  };
 
   const handleHomeClick = () => {
     navigate("/home");
@@ -425,25 +447,10 @@ const handleSaveMedicalInfo = () => {
     navigate("/login");
   };
 
-  // بيانات تجريبية للزيارات والملفات
-  const futureVisits = [
-    { date: "2025-06-26", time: "11:00", service: "تنظيف أسنان", doctor: "د. علا أحمد", status: "مجدول" },
-    { date: "2025-07-01", time: "12:30", service: "فحص نظر", doctor: "د. سامي خليل", status: "مجدول" },
-  ];
-
-  const files = [
-    { name: "نتيجة الفحص.pdf", size: "123kb" },
-    { name: "وصفة طبية.pdf", size: "87kb" },
-    { name: "تحاليل دم.pdf", size: "135kb" },
-  ];
-
-  const notes = [
-    { name: "Note 31.06.23.pdf", size: "123kb" },
-    { name: "Note 23.06.23.pdf", size: "123kb" },
-  ];
-
   return (
-    <Box sx={{ display: "flex", minHeight: "100vh", backgroundColor: "#f4f6fb" }}>
+    <Box
+      sx={{ display: "flex", minHeight: "100vh", backgroundColor: "#f4f6fb" }}
+    >
       <Drawer
         variant="permanent"
         sx={{
@@ -459,8 +466,19 @@ const handleSaveMedicalInfo = () => {
           },
         }}
       >
-        <Toolbar sx={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-          <Typography variant="h6" noWrap component="div" fontFamily={"monospace"}>
+        <Toolbar
+          sx={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+          }}
+        >
+          <Typography
+            variant="h6"
+            noWrap
+            component="div"
+            fontFamily={"monospace"}
+          >
             M E D I C A L
           </Typography>
         </Toolbar>
@@ -531,6 +549,7 @@ const handleSaveMedicalInfo = () => {
 
         {!loading && patient && (
           <Grid container spacing={3}>
+            {/* بيانات المريض */}
             <Grid item xs={12} md={3}>
               <Paper
                 sx={{
@@ -553,142 +572,184 @@ const handleSaveMedicalInfo = () => {
             </Grid>
 
             <Grid item xs={12} md={6}>
-              <Paper
-  sx={{
-    p: 2,
-    mb: 2,
-    position: "relative",
-    borderRight: "2px solid #1976d2",
-    borderRadius: "16px 40px",
-  }}
->
-  <Box display="flex" justifyContent="space-between" alignItems="center">
-    <Typography variant="h6">المعلومات العامة</Typography>
-    <IconButton onClick={handleOpenDialog} size="small" sx={{ color: "#1976d2" }}>
-      <EditIcon />
-    </IconButton>
-  </Box>
-  <Grid container spacing={2} mt={1}>
-    <Grid item xs={6}>
-      <strong>تاريخ الميلاد:</strong> {patient.birth_date}
-    </Grid>
-    <Grid item xs={6}>
-      <strong>العنوان:</strong> {patient.address}
-    </Grid>
-  </Grid>
-</Paper>
-
-              <Paper sx={{ p: 2, mb: 2, borderRadius: "16px 40px" }}>
-  <Box display="flex" justifyContent="space-between" alignItems="center" mb={1}>
-    <Typography variant="h6">الأمراض والحساسية</Typography>
-    {isLocked && (
-      <Button variant="outlined" onClick={() => setIsLocked(false)}>
-        {Object.values(medicalInfo).some((val) => val !== "") ? "تعديل" : "ادخل"}
-      </Button>
-    )}
-  </Box>
-  <Grid container spacing={2}>
-    {["allergies", "chronicDiseases", "bloodType", "pastIllnesses"].map((field) => (
-      <Grid item xs={12} sm={6} key={field}>
-        <Typography fontWeight="bold">
-          {{
-            allergies: "الحساسية",
-            chronicDiseases: "الأمراض المزمنة",
-            bloodType: "فصيلة الدم",
-            pastIllnesses: "الأمراض السابقة",
-          }[field]}
-        </Typography>
-        {isLocked ? (
-          <Typography variant="body1" color="text.secondary">
-            {medicalInfo[field] || "-"}
-          </Typography>
-        ) : (
-          <TextField
-            fullWidth
-            size="small"
-            name={field}
-            value={medicalInfo[field]}
-            onChange={handleMedicalChange}
-            placeholder="أدخل القيمة"
-          />
-        )}
-      </Grid>
-    ))}
-    {!isLocked && (
-      <Grid item xs={12} textAlign="right">
-        <Button variant="contained" onClick={handleSaveMedicalInfo}>
-          حفظ
-        </Button>
-      </Grid>
-    )}
-  </Grid>
-</Paper>
-
-
-
-              <Paper
-                sx={{
-                  p: 2,
-                  borderRight: "2px solid #1976d2",
-                  borderRadius: "16px 40px",
-                }}
-              >
-                <Typography variant="h6">الزيارات القادمة</Typography>
-                <List>
-                  {futureVisits.map((visit, idx) => (
-                    <ListItem key={idx} divider>
-                      <ListItemText
-                        primary={`${visit.date} ${visit.time} - ${visit.service}`}
-                        secondary={`الطبيب: ${visit.doctor}`}
-                      />
-                      <Chip label={visit.status} color="primary" />
-                    </ListItem>
-                  ))}
-                </List>
-              </Paper>
-            </Grid>
-
-            <Grid item xs={12} md={3}>
+              {/* المعلومات العامة */}
               <Paper
                 sx={{
                   p: 2,
                   mb: 2,
+                  position: "relative",
                   borderRight: "2px solid #1976d2",
                   borderRadius: "16px 40px",
                 }}
               >
-                <Typography variant="h6">الملفات</Typography>
-                {files.map((file, idx) => (
-                  <Box key={idx} display="flex" justifyContent="space-between" my={1}>
-                    <Link href="#" underline="hover">
-                      {file.name}
-                    </Link>
-                    <Typography variant="caption">{file.size}</Typography>
-                  </Box>
-                ))}
-                <Button size="small" variant="contained" sx={{ mt: 1 }}>
-                  تحميل
-                </Button>
+                <Box
+                  display="flex"
+                  justifyContent="space-between"
+                  alignItems="center"
+                >
+                  <Typography variant="h6">المعلومات العامة</Typography>
+                  <IconButton
+                    onClick={handleOpenDialog}
+                    size="small"
+                    sx={{ color: "#1976d2" }}
+                  >
+                    <EditIcon />
+                  </IconButton>
+                </Box>
+                <Grid container spacing={2} mt={1}>
+                  <Grid item xs={6}>
+                    <strong>تاريخ الميلاد:</strong> {patient.birth_date}
+                  </Grid>
+                  <Grid item xs={6}>
+                    <strong>العنوان:</strong> {patient.address}
+                  </Grid>
+                </Grid>
               </Paper>
 
-              <Paper
-                sx={{
-                  p: 2,
-                  borderRight: "2px solid #1976d2",
-                  borderRadius: "16px 40px",
-                }}
-              >
-                <Typography variant="h6">ملاحظات</Typography>
-                {notes.map((note, idx) => (
-                  <Box key={idx} display="flex" justifyContent="space-between" my={1}>
-                    <Typography>{note.name}</Typography>
-                    <Typography variant="caption">{note.size}</Typography>
-                  </Box>
-                ))}
-                <Button size="small" variant="outlined" sx={{ mt: 1 }}>
-                  تحميل
-                </Button>
+              {/* الأمراض والحساسية */}
+              <Paper sx={{ p: 2, mb: 2, borderRadius: "16px 40px" }}>
+                <Box
+                  display="flex"
+                  justifyContent="space-between"
+                  alignItems="center"
+                  mb={1}
+                >
+                  <Typography variant="h6">الأمراض والحساسية</Typography>
+                  {isLocked && (
+                    <Button variant="outlined" onClick={() => setIsLocked(false)}>
+                      {Object.values(medicalInfo).some((val) => val !== "")
+                        ? "تعديل"
+                        : "ادخل"}
+                    </Button>
+                  )}
+                </Box>
+                <Grid container spacing={2}>
+                  {["allergies", "chronicDiseases", "bloodType", "pastIllnesses"].map(
+                    (field) => (
+                      <Grid item xs={12} sm={6} key={field}>
+                        <Typography fontWeight="bold">
+                          {{
+                            allergies: "الحساسية",
+                            chronicDiseases: "الأمراض المزمنة",
+                            bloodType: "فصيلة الدم",
+                            pastIllnesses: "الأمراض السابقة",
+                          }[field]}
+                        </Typography>
+                        {isLocked ? (
+                          <Typography variant="body1" color="text.secondary">
+                            {medicalInfo[field] || "-"}
+                          </Typography>
+                        ) : (
+                          <TextField
+                            fullWidth
+                            size="small"
+                            name={field}
+                            value={medicalInfo[field]}
+                            onChange={handleMedicalChange}
+                            placeholder="أدخل القيمة"
+                          />
+                        )}
+                      </Grid>
+                    )
+                  )}
+                  {!isLocked && (
+                    <Grid item xs={12} textAlign="right">
+                      <Button variant="contained" onClick={handleSaveMedicalInfo}>
+                        حفظ
+                      </Button>
+                    </Grid>
+                  )}
+                </Grid>
               </Paper>
+
+              {/* عرض مواعيد المريض */}
+              <Paper sx={{ p: 2, mb: 2, borderRadius: "16px 40px" }}>
+                <Typography variant="h6" mb={2}>
+                  مواعيدك القادمة
+                </Typography>
+
+                {loadingAppointments && <CircularProgress />}
+                {errorAppointments && (
+                  <Alert severity="error">{errorAppointments}</Alert>
+                )}
+
+                <Grid container spacing={2}>
+                  {appointments.map((app) => (
+                    <Grid
+                      item
+                      xs={12}
+                      sm={6}
+                      key={app.id}
+                      sx={{
+                        background:
+                          "linear-gradient(135deg, #e3f2fd 0%, #ffffff 100%)",
+                        borderRadius: 3,
+                        p: 2,
+                        boxShadow: "0 4px 12px rgba(0,0,0,0.1)",
+                      }}
+                    >
+                      <Typography fontWeight="bold">
+                        {app.sub_specialization.name} -{" "}
+                        {app.sub_specialization.specialization}
+                      </Typography>
+                      <Typography variant="body2" color="text.secondary">
+                        التاريخ: {new Date(app.date).toLocaleDateString()} - الوقت:{" "}
+                        {new Date(app.date).toLocaleTimeString([], {
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })}
+                      </Typography>
+                      <Chip
+                        label={
+                          app.status === "pending" ? "قيد الانتظار" : app.status
+                        }
+                        color={app.status === "pending" ? "warning" : "success"}
+                        size="small"
+                        sx={{ mt: 1 }}
+                      />
+                    </Grid>
+                  ))}
+                </Grid>
+              </Paper>
+
+              {/* ✅ عرض تقارير المريض */}
+              <Paper sx={{ p: 2, borderRadius: "16px 40px" }}>
+                <Typography variant="h6" mb={2}>
+                  تقاريرك الطبية
+                </Typography>
+                {loadingReports && <CircularProgress />}
+                {errorReports && <Alert severity="error">{errorReports}</Alert>}
+                {reports.length === 0 && !loadingReports && (
+                  <Typography>لا يوجد تقارير بعد</Typography>
+                )}
+                {reports.map((report, idx) => (
+                  <Card
+                    key={idx}
+                    sx={{
+                      mb: 2,
+                      borderRadius: 3,
+                      boxShadow: "0 4px 12px rgba(0,0,0,0.1)",
+                      background: "linear-gradient(135deg, #fafafa 0%, #fff 100%)",
+                    }}
+                  >
+                    <CardContent>
+                      <Typography variant="subtitle2" color="primary">
+                        الدكتور: {report.doctor_name}
+                      </Typography>
+                      <Typography
+                        variant="body2"
+                        sx={{ whiteSpace: "pre-line", mt: 1 }}
+                      >
+                        {report.content}
+                      </Typography>
+                    </CardContent>
+                  </Card>
+                ))}
+              </Paper>
+            </Grid>
+
+            <Grid item xs={12} md={3}>
+              {/* الملفات والملاحظات */}
             </Grid>
           </Grid>
         )}

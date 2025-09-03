@@ -1,5 +1,5 @@
 import { useNavigate } from "react-router-dom";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Box,
   Grid,
@@ -7,30 +7,60 @@ import {
   AppBar,
   Toolbar,
   Button,
-  TextField
+  TextField,
+  CircularProgress,
+  Alert,
 } from "@mui/material";
+import { useDispatch, useSelector } from "react-redux";
+
 import LogoSearch from "../components/LogoSearch";
 import HeroSection from "../components/HeroSection";
-import { specialties } from "../data";
 import Footer from "../components/Footer";
 import TopDoctorsSection from "../components/TopDoctorsSection";
-import SpecialtiesCarousel from "../components/SpecialtiesCarousel"
+import SpecialtiesCarousel from "../components/SpecialtiesCarousel";
+
+import { addOpinion, fetchOpinions, clearSuccessMessage } from "../slices/opinionsSlice";
 
 const HomePage = () => {
   const navigate = useNavigate();
-
-  const [patientReviews, setPatientReviews] = useState([
-    "خدمة ممتازة وسرعة في الحجز.",
-    "أطباء محترفون وتعامل راقٍ.",
-    "تجربة رائعة وسهلة، أنصح بها بشدة!"
-  ]);
+  const dispatch = useDispatch();
+  const { opinionsList, loading, error, successMessage } = useSelector((state) => state.opinions);
 
   const [newReview, setNewReview] = useState("");
+  const [patientReviews, setPatientReviews] = useState([]);
 
-  const handleAddReview = () => {
+  // جلب الآراء عند تحميل الصفحة
+  useEffect(() => {
+    dispatch(fetchOpinions());
+  }, [dispatch]);
+
+  // تحديث state المحلي بعد ما تتحدث قائمة الآراء بالـ store
+  useEffect(() => {
+    if (opinionsList && Array.isArray(opinionsList)) {
+      const sortedOpinions = [...opinionsList].sort(
+        (a, b) => new Date(b.created_at) - new Date(a.created_at)
+      );
+      setPatientReviews(sortedOpinions);
+    }
+  }, [opinionsList]);
+
+  // مسح رسالة النجاح بعد 3 ثواني
+  useEffect(() => {
+    if (successMessage) {
+      const timer = setTimeout(() => dispatch(clearSuccessMessage()), 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [successMessage, dispatch]);
+
+  const handleAddReview = async () => {
     if (newReview.trim() === "") return;
-    setPatientReviews([newReview, ...patientReviews]);
-    setNewReview("");
+    try {
+      await dispatch(addOpinion(newReview)).unwrap();
+      dispatch(fetchOpinions()); // إعادة جلب الآراء بعد الإضافة
+      setNewReview("");
+    } catch (err) {
+      console.error(err);
+    }
   };
 
   return (
@@ -42,43 +72,7 @@ const HomePage = () => {
       </AppBar>
 
       <HeroSection />
-
-<SpecialtiesCarousel />
-
-      {/* <Box sx={{ p: 2 }}>
-        <Typography mb={2} variant="h4" fontWeight="bold" color="#1E3A5F" textAlign="center">
-          الاختصاصات الطبية
-        </Typography>
-        <Grid container spacing={2} justifyContent="center">
-          {specialties.map((spec) => (
-            <Grid item xs={12} sm={6} md={3} key={spec.id}>
-              <Box
-                onClick={() => navigate(`/specialty/${spec.id}`)}
-                sx={{
-                  p: 5,
-                  height: "120px",
-                  width: "180px",
-                  border: "2px solid",
-                  borderColor: "#ccc",
-                  borderRadius: "40px",
-                  cursor: "pointer",
-                  textAlign: "center",
-                  backgroundImage: `url(${spec.image})`,
-                  backgroundSize: "cover",
-                  backgroundPosition: "center",
-                  backgroundRepeat: "no-repeat",
-                  transition: "0.3s",
-                  position: "relative",
-                  '&:hover': {
-                    transform: 'scale(1.1)',
-                  },
-                }}
-              />
-            </Grid>
-          ))}
-        </Grid>
-      </Box> */}
-
+      <SpecialtiesCarousel />
       <TopDoctorsSection />
 
       {/* قسم آراء المرضى */}
@@ -97,31 +91,32 @@ const HomePage = () => {
             variant="outlined"
             value={newReview}
             onChange={(e) => setNewReview(e.target.value)}
-            sx={{
-              backgroundColor: 'white',
-              borderRadius: '12px',
-            }}
+            sx={{ backgroundColor: "white", borderRadius: "12px" }}
           />
           <Button
             variant="contained"
             onClick={handleAddReview}
             sx={{
               mt: 2,
-              backgroundColor: '#1E3A5F',
-              color: 'white',
+              backgroundColor: "#1E3A5F",
+              color: "white",
               px: 4,
               py: 1,
-              borderRadius: '20px',
-              '&:hover': { backgroundColor: '#163250' },
+              borderRadius: "20px",
+              "&:hover": { backgroundColor: "#163250" },
             }}
           >
             أضف رأيك
           </Button>
         </Box>
 
+        {loading && <CircularProgress sx={{ display: "block", mx: "auto", mb: 2 }} />}
+        {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
+        {successMessage && <Alert severity="success" sx={{ mb: 2 }}>{successMessage}</Alert>}
+
         {/* عرض الآراء */}
         <Grid container spacing={4} justifyContent="center">
-          {patientReviews.map((text, index) => (
+          {patientReviews.map((review, index) => (
             <Grid item xs={12} sm={6} md={4} key={index}>
               <Box
                 sx={{
@@ -146,7 +141,7 @@ const HomePage = () => {
                   gutterBottom
                   sx={{ fontSize: '1.1rem', lineHeight: 1.8 }}
                 >
-                  “{text}”
+                  “{review.opinion || review.Opinion}”
                 </Typography>
                 <Typography
                   variant="subtitle2"
@@ -154,7 +149,10 @@ const HomePage = () => {
                   textAlign="right"
                   sx={{ mt: 2, fontStyle: 'italic' }}
                 >
-                  - مريض سعيد
+                  {review.created_at
+                    ? new Date(review.created_at).toLocaleDateString('ar-EG')
+                    : ""}
+                  {" "} - مريض سعيد
                 </Typography>
               </Box>
             </Grid>
@@ -163,26 +161,18 @@ const HomePage = () => {
       </Box>
 
       {/* زر حجز الموعد */}
-      <Box
-        sx={{
-          display: 'flex',
-          justifyContent: 'center',
-          alignItems: 'center',
-          mt: 6,
-          mb: 4,
-        }}
-      >
+      <Box sx={{ display: "flex", justifyContent: "center", alignItems: "center", mt: 6, mb: 4 }}>
         <Button
           variant="contained"
-          onClick={() => navigate('/booking')}
+          onClick={() => navigate("/booking")}
           sx={{
-            backgroundColor: '#1E3A5F',
-            color: 'white',
+            backgroundColor: "#1E3A5F",
+            color: "white",
             px: 5,
             py: 1.8,
             fontSize: 20,
-            borderRadius: '30px',
-            '&:hover': { backgroundColor: '#163250' },
+            borderRadius: "30px",
+            "&:hover": { backgroundColor: "#163250" },
           }}
         >
           احجز موعدك الآن
