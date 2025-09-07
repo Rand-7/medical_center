@@ -13,11 +13,13 @@ export const loginUser = createAsyncThunk(
     try {
       const response = await axios.post('/login', { email, password, user_type });
       const { token, user } = response.data.data;
+      const userType=response.data.data.user_type
 
       localStorage.setItem('token', token);
       localStorage.setItem('user', JSON.stringify(user));
+ localStorage.setItem('user_type', userType);
 
-      return { token, user };
+      return { token, user,user_type:userType };
     } catch (error) {
       return rejectWithValue(error.response?.data?.message || 'خطأ في تسجيل الدخول');
     }
@@ -96,6 +98,7 @@ const authSlice = createSlice({
         state.loading = false;
         state.user = action.payload.user;
         state.token = action.payload.token;
+        state.user_type=action.payload.user_type
       })
       .addCase(loginUser.rejected, (state, action) => {
         state.loading = false;

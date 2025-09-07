@@ -113,15 +113,12 @@ const LogoSearch = () => {
           {/* مؤشر الصحة - قلب ينبض */}
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
             <FavoriteIcon
-              sx={{
-                fontSize: 30,
-                color: healthScore > 70 ? 'green' : healthScore > 40 ? 'orange' : 'red',
-                animation: `${pulse} 1.2s infinite ease-in-out`
-              }}
-            />
-            <Typography sx={{ fontWeight: 'bold', color: '#333', fontSize: '0.9rem' }}>
-              {healthScore}%
-            </Typography>
+            sx={{
+              fontSize: 30,
+              color: "green",
+              animation: `${pulse} 1.2s infinite ease-in-out`,
+            }}
+          />
           </Box>
         </Box>
       </Toolbar>

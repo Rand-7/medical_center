@@ -327,14 +327,16 @@ import HomeIcon from "@mui/icons-material/Home";
 import MedicalServicesIcon from "@mui/icons-material/MedicalServices";
 import LogoutIcon from "@mui/icons-material/Logout";
 import EditIcon from "@mui/icons-material/Edit";
+import Rating from '@mui/material/Rating';
+
 
 import { useDispatch, useSelector } from "react-redux";
 import { fetchPatientById, updatePatient } from "../slices/patientSlice";
 import { fetchAppointments } from "../slices/appointmentsSlice";
 import { fetchPatientReports } from "../slices/reportsSlice";
-
 import { useNavigate } from "react-router-dom";
 import { logoutUser } from "../slices/authSlice";
+import { rateAppointment } from "../slices/ratingSlice";
 
 const drawerWidth = 240;
 
@@ -376,6 +378,12 @@ const PatientProfile = () => {
   });
   const [isLocked, setIsLocked] = useState(true);
 
+  //للتقييم
+  const [ratingData, setRatingData] = useState({ rating: "", comment: "" });
+  const [selectedAppointment, setSelectedAppointment] = useState(null);
+  const [openRatingDialog, setOpenRatingDialog] = useState(false);
+
+
   // جلب بيانات من localStorage عند بداية الصفحة
   useEffect(() => {
     const storedMedicalInfo = localStorage.getItem("medical_info");
@@ -391,6 +399,41 @@ const PatientProfile = () => {
       dispatch(fetchPatientReports(patientId)); // ✅ جلب تقارير المريض
     }
   }, [dispatch, patientId]);
+
+  //للتقييم
+  const handleOpenRating = (appointment) => {
+    if (appointment.status !== "completed") {
+      alert("لا يمكنك التقييم قبل اكتمال الموعد");
+      return;
+    }
+    setSelectedAppointment(appointment);
+    setRatingData({ rating: "", comment: "" });
+    setOpenRatingDialog(true);
+  };
+  
+  const handleCloseRating = () => {
+    setOpenRatingDialog(false);
+  };
+  
+  const handleRatingChange = (e) => {
+    setRatingData({ ...ratingData, [e.target.name]: e.target.value });
+  };
+  
+  const handleSubmitRating = async () => {
+    try {
+      await dispatch(
+        rateAppointment({
+          appointmentId: selectedAppointment.id,
+          ratingData,
+        })
+      ).unwrap();
+      setOpenRatingDialog(false);
+      alert("تم إرسال تقييمك بنجاح ✅");
+    } catch (err) {
+      alert(err || "حدث خطأ أثناء إرسال التقييم ❌");
+    }
+  };
+  
 
   const handleOpenDialog = () => {
     setEditedData({
@@ -707,6 +750,14 @@ const PatientProfile = () => {
                         size="small"
                         sx={{ mt: 1 }}
                       />
+                      <Button
+                         variant="outlined"
+                         size="small"
+                         sx={{ mt: 1 }}
+                        onClick={() => handleOpenRating(app)} >
+                           قيّم الموعد
+                      </Button>
+
                     </Grid>
                   ))}
                 </Grid>
@@ -824,6 +875,36 @@ const PatientProfile = () => {
             </Button>
           </DialogActions>
         </Dialog>
+        <Dialog open={openRatingDialog} onClose={handleCloseRating}>
+  <DialogTitle>إرسال تقييم</DialogTitle>
+  <DialogContent>
+    <Typography component="legend">التقييم</Typography>
+    <Rating
+      name="rating"
+      value={Number(ratingData.rating) || 0}
+      onChange={(event, newValue) => {
+        setRatingData({ ...ratingData, rating: newValue });
+      }}
+    />
+    <TextField
+      margin="dense"
+      label="تعليق (اختياري)"
+      name="comment"
+      fullWidth
+      multiline
+      rows={3}
+      value={ratingData.comment}
+      onChange={handleRatingChange}
+    />
+  </DialogContent>
+  <DialogActions>
+    <Button onClick={handleCloseRating}>إلغاء</Button>
+    <Button onClick={handleSubmitRating} variant="contained">
+      إرسال
+    </Button>
+  </DialogActions>
+</Dialog>
+
       </Box>
     </Box>
   );

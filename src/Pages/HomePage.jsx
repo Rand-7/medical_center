@@ -161,7 +161,7 @@ const HomePage = () => {
       </Box>
 
       {/* زر حجز الموعد */}
-      <Box sx={{ display: "flex", justifyContent: "center", alignItems: "center", mt: 6, mb: 4 }}>
+      {/* <Box sx={{ display: "flex", justifyContent: "center", alignItems: "center", mt: 6, mb: 4 }}>
         <Button
           variant="contained"
           onClick={() => navigate("/booking")}
@@ -177,7 +177,7 @@ const HomePage = () => {
         >
           احجز موعدك الآن
         </Button>
-      </Box>
+      </Box> */}
 
       <Footer />
     </Box>

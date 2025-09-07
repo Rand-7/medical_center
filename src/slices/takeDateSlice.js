@@ -1,72 +1,46 @@
-// src/slices/appointmentSlice.js
+
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import axios from "../utils/axios";
 
-// 🔹 Thunk لحجز الموعد
 export const bookAppointment = createAsyncThunk(
-  "appointments/book",
-  async ({ patient_id, doctor_id, sub_specialization_id, appointment_date, token }, { rejectWithValue }) => {
+  "appointments/bookAppointment",
+  async ({ doctor_id, patient_id, sub_specialization_id, appointment_date }, { rejectWithValue }) => {
     try {
-      const response = await axios.post(
-        "/appointments/book",
-        {
-          patient_id,
-          doctor_id,
-          sub_specialization_id,
-          appointment_date,
-        },
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-            Accept: "application/json",
-          },
-        }
-      );
-      return response.data; // بيرجع { data, status, error, statusCode }
+      const response = await axios.post("/appointments/book", {
+        doctor_id,
+        patient_id,
+        sub_specialization_id,
+        appointment_date,
+      });
+      return response.data;
     } catch (error) {
-      return rejectWithValue(
-        error.response?.data || { message: "حدث خطأ أثناء الحجز" }
-      );
+      return rejectWithValue(error.response?.data?.error || "فشل الحجز");
     }
   }
 );
 
 const takeDateSlice = createSlice({
-  name: "appointment",
+  name: "appointments",
   initialState: {
-    loading: false,
-    data: null,
+    booking: null,
+    status: "idle",
     error: null,
-    success: false,
   },
-  reducers: {
-    resetAppointment: (state) => {
-      state.loading = false;
-      state.data = null;
-      state.error = null;
-      state.success = false;
-    },
-  },
+  reducers: {},
   extraReducers: (builder) => {
     builder
       .addCase(bookAppointment.pending, (state) => {
-        state.loading = true;
-        state.error = null;
-        state.success = false;
+        state.status = "loading";
       })
       .addCase(bookAppointment.fulfilled, (state, action) => {
-        state.loading = false;
-        state.data = action.payload.data;
-        state.success = true;
-        state.error = null;
+        state.status = "succeeded";
+        state.booking = action.payload.data;
       })
       .addCase(bookAppointment.rejected, (state, action) => {
-        state.loading = false;
-        state.error = action.payload || "فشل الحجز";
-        state.success = false;
+        state.status = "failed";
+        state.error = action.payload;
       });
   },
 });
 
-export const { resetAppointment } = takeDateSlice.actions;
 export default takeDateSlice.reducer;

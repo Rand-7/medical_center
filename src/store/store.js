@@ -15,6 +15,9 @@ import avalibleDoctorTimeReducer from "../slices/avalibaleDoctorTime"
 import takedateReducer from "../slices/takeDateSlice"
 import updateScheduleReducer from "../slices/updateScheduleSlice";
 import appointmentsByStatusReducer from "../slices/appointmentsByStatusSlice";
+import appointmentAttendanceReducer from "../slices/appointmentAttendanceSlice";
+import avaliblePatientTimeReducer from "../slices/avaliblalePatientTime";
+import ratingReducer from "../slices/ratingSlice"
 export default configureStore({
   reducer: {
     auth: authReducer,
@@ -33,5 +36,8 @@ export default configureStore({
        takedate:takedateReducer,
        updateSchedule: updateScheduleReducer,
    appointmentsByStatus: appointmentsByStatusReducer,
+   appointmentAttendance: appointmentAttendanceReducer,
+   avaliblePatientSlice: avaliblePatientTimeReducer, 
+   ratingSlice:ratingReducer,
   },
 });

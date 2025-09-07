@@ -2,26 +2,25 @@
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import axios from "../utils/axios";
 
-// ✅ AsyncThunk لجلب المواعيد حسب الحالة
+// ✅ جلب المواعيد حسب الحالة
 export const fetchAppointmentsByStatus = createAsyncThunk(
   "appointments/fetchByStatus",
-  async ({ doctorId, status, token }, { rejectWithValue }) => {
+  async ({ doctorId, status }, { rejectWithValue, getState }) => {
     try {
+      const token = getState().auth?.user?.token; // ⚡ جلب التوكن من authSlice
       const response = await axios.get(
         `/doctors/${doctorId}/appointments/status/${status}`,
         {
           headers: {
             Authorization: `Bearer ${token}`,
-            Accept: "application/json",
           },
         }
       );
-      return { status, data: response.data.data };
-    } catch (err) {
-      if (err.response) {
-        return rejectWithValue(err.response.data);
-      }
-      return rejectWithValue(err.message);
+      return response.data; // بيرجع JSON مثل يلي عطيتني ياه
+    } catch (error) {
+      return rejectWithValue(
+        error.response?.data || { message: "فشل جلب المواعيد حسب الحالة" }
+      );
     }
   }
 );
@@ -29,27 +28,17 @@ export const fetchAppointmentsByStatus = createAsyncThunk(
 const appointmentsByStatusSlice = createSlice({
   name: "appointmentsByStatus",
   initialState: {
-    appointments: {
-      pending: [],
-      confirmed: [],
-      cancelled: [],
-      completed: [],
-      no_show: [],
-    },
     loading: false,
     error: null,
+    appointments: {},
+    statusMessage: null,
   },
   reducers: {
-    resetAppointmentsState: (state) => {
-      state.appointments = {
-        pending: [],
-        confirmed: [],
-        cancelled: [],
-        completed: [],
-        no_show: [],
-      };
+    resetAppointmentsByStatus: (state) => {
       state.loading = false;
       state.error = null;
+      state.appointments = {};
+      state.statusMessage = null;
     },
   },
   extraReducers: (builder) => {
@@ -57,17 +46,23 @@ const appointmentsByStatusSlice = createSlice({
       .addCase(fetchAppointmentsByStatus.pending, (state) => {
         state.loading = true;
         state.error = null;
+        state.statusMessage = null;
       })
       .addCase(fetchAppointmentsByStatus.fulfilled, (state, action) => {
         state.loading = false;
-        state.appointments[action.payload.status] = action.payload.data;
+        const status=action.meta.arg.status;
+
+        state.appointments[status] = action.payload.data || [];
+        state.statusMessage = action.payload.error || null; // "قائمة المواعيد حسب الحالة"
+        state.error = null;
       })
       .addCase(fetchAppointmentsByStatus.rejected, (state, action) => {
         state.loading = false;
-        state.error = action.payload || "فشل جلب المواعيد";
+        state.error = action.payload?.message || "خطأ غير متوقع";
+        state.statusMessage = null;
       });
   },
 });
 
-export const { resetAppointmentsState } = appointmentsByStatusSlice.actions;
+export const { resetAppointmentsByStatus } = appointmentsByStatusSlice.actions;
 export default appointmentsByStatusSlice.reducer;

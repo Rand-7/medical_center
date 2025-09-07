@@ -36,7 +36,7 @@ const LoginForm = () => {
   const [fade, setFade] = useState(true);
 
   const { loading, error, token, user } = useSelector((state) => state.auth);
-  const user_type = useSelector((state) => state.auth);
+  const {user_type} = useSelector((state) => state.auth);
 
   // ✅ تبديل الصور كل 5 ثوانٍ
   useEffect(() => {
@@ -54,7 +54,7 @@ const LoginForm = () => {
   useEffect(() => {
      console.log("💡 user داخل useEffect:", user);
     if (token && user) {
-      if (user.user_type === 'doctor') {
+      if (user_type === 'doctor') {
          
         navigate('/doctor-dashboard');
       } else {
