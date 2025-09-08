@@ -424,7 +424,9 @@ const PatientProfile = () => {
       await dispatch(
         rateAppointment({
           appointmentId: selectedAppointment.id,
-          ratingData,
+          rating:ratingData.rating,
+          comment:ratingData.comment,
+          token:authUser?.token,
         })
       ).unwrap();
       setOpenRatingDialog(false);
